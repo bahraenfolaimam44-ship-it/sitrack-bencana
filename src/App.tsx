@@ -52,6 +52,30 @@ export default function App() {
     return () => clearInterval(t);
   }, []);
 
+  useEffect(() => {
+    if (!navOpen) return;
+
+    const media = window.matchMedia('(max-width: 920px)');
+    const previousOverflow = document.body.style.overflow;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setNavOpen(false);
+    };
+    const handleViewportChange = () => {
+      if (!media.matches) setNavOpen(false);
+    };
+
+    if (media.matches) document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+    media.addEventListener('change', handleViewportChange);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+      media.removeEventListener('change', handleViewportChange);
+    };
+  }, [navOpen]);
+
   const handleEdit = (id: string) => {
     setEditingId(id);
     setPage('input');
@@ -182,6 +206,24 @@ export default function App() {
 
   return (
     <div className="app">
+      <button
+        type="button"
+        className={`nav-toggle${navOpen ? ' open' : ''}`}
+        aria-label={navOpen ? 'Tutup menu navigasi' : 'Buka menu navigasi'}
+        aria-expanded={navOpen}
+        aria-controls="main-nav"
+        onClick={() => setNavOpen((open) => !open)}
+      >
+        {navOpen ? '✕' : '☰'}
+      </button>
+      {navOpen && (
+        <button
+          type="button"
+          className="nav-overlay"
+          aria-label="Tutup menu navigasi"
+          onClick={() => setNavOpen(false)}
+        />
+      )}
       <aside className={`side${navOpen ? ' open' : ''}`}>
         <div className="brand">
           <svg className="brand-logo" viewBox="0 0 100 100" aria-hidden="true">
@@ -196,16 +238,6 @@ export default function App() {
             <small>BPBD KOTA AMBON</small>
           </div>
         </div>
-        <button
-          type="button"
-          className="nav-toggle"
-          aria-label={navOpen ? 'Tutup menu navigasi' : 'Buka menu navigasi'}
-          aria-expanded={navOpen}
-          aria-controls="main-nav"
-          onClick={() => setNavOpen((open) => !open)}
-        >
-          {navOpen ? '✕' : '☰'}
-        </button>
         <nav className="nav" id="main-nav" aria-label="Menu SI-TRACK">
           {navItems.map((n) => (
             <a

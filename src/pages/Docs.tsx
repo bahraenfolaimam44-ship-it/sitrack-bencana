@@ -27,33 +27,52 @@ export default function Docs() {
   }, [load]);
 
   return (
-    <div className="section">
+    <div className="section docs-section">
       <h2>📷 Dokumentasi Foto Kejadian & Penyerahan</h2>
       {loadError != null && <DataErrorNotice title="Gagal memuat dokumentasi." error={loadError} onRetry={load} retrying={loading} />}
       {loading && data.length === 0 && !loadError && (
         <div className="notice" role="status">⏳ Memuat dokumentasi...</div>
       )}
-      {data.map((x) => (
-        <div key={x.id} className="section">
-          <b>{x.nomor} — {x.jenis_bencana}</b>
-          <div style={{ marginTop: 8 }}>
-            <b>Nama Keluarga Korban:</b>{' '}
-            {(x.korban || []).filter((k) => k && k.nama).map((k) => k.nama).join(', ') || <span className="muted">Tidak ada korban</span>}
-          </div>
-          <div className="photo-grid" style={{ marginTop: 10 }}>
-            <div>
-              <b>Foto Kejadian</b>
-              {(x.foto_kejadian || []).length === 0 && <div className="muted">Belum ada foto</div>}
-              {(x.foto_kejadian || []).map((p, i) => <FotoImage key={i} foto={p} alt={`Foto kejadian ${i + 1}`} />)}
+      <div className="docs-grid">
+        {data.map((x) => (
+          <article key={x.id} className="doc-card">
+            <div className="doc-card-head">
+              <b>{x.nomor}</b>
+              <span className="doc-jenis">{x.jenis_bencana}</span>
             </div>
-            <div>
-              <b>Foto Penyerahan</b>
-              {(x.foto_penyerahan || []).length === 0 && <div className="muted">Belum ada foto</div>}
-              {(x.foto_penyerahan || []).map((p, i) => <FotoImage key={i} foto={p} alt={`Foto penyerahan ${i + 1}`} />)}
+            <div className="doc-meta">
+              <span className="doc-label">Nama Keluarga Korban:</span>{' '}
+              {(x.korban || []).filter((k) => k && k.nama).map((k) => k.nama).join(', ') || <span className="muted">Tidak ada korban</span>}
             </div>
-          </div>
-        </div>
-      ))}
+            <div className="doc-photos">
+              <div className="doc-photo-col">
+                <span className="doc-photo-label">Foto Kejadian</span>
+                {(x.foto_kejadian || []).length === 0 ? (
+                  <div className="doc-photo-empty">Belum ada foto</div>
+                ) : (
+                  <div className="doc-photo-list">
+                    {(x.foto_kejadian || []).map((p, i) => (
+                      <FotoImage key={i} foto={p} alt={`Foto kejadian ${i + 1}`} title={`Foto kejadian ${i + 1}`} />
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="doc-photo-col">
+                <span className="doc-photo-label">Foto Penyerahan</span>
+                {(x.foto_penyerahan || []).length === 0 ? (
+                  <div className="doc-photo-empty">Belum ada foto</div>
+                ) : (
+                  <div className="doc-photo-list">
+                    {(x.foto_penyerahan || []).map((p, i) => (
+                      <FotoImage key={i} foto={p} alt={`Foto penyerahan ${i + 1}`} title={`Foto penyerahan ${i + 1}`} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
       {data.length === 0 && !loadError && !loading && <div className="empty">Belum ada dokumentasi.</div>}
     </div>
   );

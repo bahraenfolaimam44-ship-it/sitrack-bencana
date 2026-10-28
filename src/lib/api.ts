@@ -248,6 +248,90 @@ export async function updateStatusLaporan(id: string, tindakLanjut: TindakLanjut
   if (error) throw error;
 }
 
+const FOTO_BUCKETS: FotoBucket[] = ['sitrack-foto-kejadian', 'sitrack-foto-penyerahan'];
+
+function describeDeleteError(message: string): string {
+  if (/permission denied|row-level security|not authorized|unauthorized|42501|401|403/i.test(message)) {
+    return 'Penghapusan ditolak server. Pastikan Anda sudah login dan policy DELETE untuk role authenticated sudah dijalankan di Supabase.';
+  }
+  if (/failed to fetch|network|load failed|timeout/i.test(message)) {
+    return 'Koneksi ke server terputus. Periksa jaringan lalu coba lagi.';
+  }
+  return message;
+}
+
+export interface DeleteLaporanResult {
+  /** Jumlah file foto yang berhasil dihapus dari storage. */
+  fotoDihapus: number;
+  /** Daftar foto yang gagal dihapus beserta alasannya. */
+  fotoGagal: string[];
+}
+
+/**
+ * Hapus SATU laporan (berdasarkan id) beserta foto kejadian & penyerahannya.
+ * - Hanya menghapus satu baris, tidak ada operasi hapus massal.
+ * - sitrack_counters sengaja tidak disentuh, sehingga nomor laporan yang
+ *   sudah dihapus tidak akan dipakai ulang.
+ */
+export async function deleteLaporan(
+  laporan: Pick<Laporan, 'id' | 'nomor' | 'foto_kejadian' | 'foto_penyerahan'>
+): Promise<DeleteLaporanResult> {
+  // Kumpulkan path storage (bukan URL) supaya file benar-benar terhapus.
+  const byBucket = new Map<FotoBucket, Set<string>>();
+  for (const field of ['foto_kejadian', 'foto_penyerahan'] as const) {
+    const photos = Array.isArray(laporan[field]) ? laporan[field] : [];
+    for (const photo of photos) {
+      if (!photo?.url) continue;
+      const parsed = parseStorageFotoUrl(photo.url);
+      if (!parsed) continue;
+      const bucket = FOTO_BUCKETS.find((item) => item === parsed.bucket);
+      if (!bucket) continue;
+
+      const paths = byBucket.get(bucket) ?? new Set<string>();
+      paths.add(parsed.path);
+      byBucket.set(bucket, paths);
+    }
+  }
+
+  // Hapus baris laporan lebih dulu agar data tidak menunjuk ke foto yang
+  // sudah hilang jika ternyata penghapusan baris ditolak server.
+  const { data, error } = await supabase
+    .from('sitrack_laporan')
+    .delete()
+    .eq('id', laporan.id)
+    .select('id');
+
+  if (error) throw new Error(describeDeleteError(error.message));
+  if (!data || data.length === 0) {
+    throw new Error(`Laporan ${laporan.nomor} tidak ditemukan atau tidak dapat dihapus (akses ditolak).`);
+  }
+
+  // Baris sudah terhapus. Bersihkan foto; kegagalan storage dilaporkan
+  // sebagai peringatan agar pengguna tahu ada file yang perlu dibersihkan.
+  let fotoDihapus = 0;
+  const fotoGagal: string[] = [];
+
+  for (const [bucket, paths] of byBucket) {
+    const list = [...paths];
+    if (!list.length) continue;
+
+    try {
+      const { error: storageError } = await supabase.storage.from(bucket).remove(list);
+      if (storageError) {
+        const reason = describeStorageError(storageError.message, bucket);
+        for (const path of list) fotoGagal.push(`${bucket}/${path} — ${reason}`);
+        continue;
+      }
+      fotoDihapus += list.length;
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      for (const path of list) fotoGagal.push(`${bucket}/${path} — ${reason}`);
+    }
+  }
+
+  return { fotoDihapus, fotoGagal };
+}
+
 export async function uploadFoto(params: {
   file: File;
   bucket: FotoBucket;

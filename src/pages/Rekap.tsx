@@ -68,7 +68,7 @@ export default function Rekap({ onExport }: { onExport: (params: { bulan: number
     setExportError(false);
     try {
       await onExport({ bulan, kecamatan });
-      setExportMsg('File Excel berhasil diunduh.');
+      setExportMsg('File Excel berhasil diunduh, termasuk foto kejadian dan foto penyerahan.');
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
       setExportError(true);
@@ -150,7 +150,7 @@ export default function Rekap({ onExport }: { onExport: (params: { bulan: number
           {exportMsg}
         </div>
       )}
-      <div className="notice">Rekap disusun mengikuti format rekapitulasi kejadian bencana. Foto kejadian dan foto penyerahan ditampilkan langsung pada kolom dokumentasi.</div>
+      <div className="notice">Rekap disusun mengikuti format rekapitulasi kejadian bencana. Foto kejadian dan foto penyerahan ditampilkan pada tabel dan ikut disertakan saat Download Excel.</div>
       {rekapTitle}
       <div className="tablewrap" style={{ marginTop: 10 }}>
         <table id="recapTable">
